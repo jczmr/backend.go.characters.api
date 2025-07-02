@@ -24,7 +24,16 @@ PORT=8080
 DB_USER=user
 DB_PASSWORD=password
 DB_NAME=dragonballdb
-DB_HOST=db
+DB_HOST=localhost
 DB_PORT=5432
+
+LOG_LEVEL=INFO
 ```
 
+- In the root folder run this command to create the image run containers
+
+```
+cd /home/user/backend.go.characters.api
+
+docker-compose up --build
+```
