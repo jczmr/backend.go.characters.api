@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant Client
+    participant GinServer as HTTP Server (Gin)
+    participant CharacterHandler
+    participant CharacterService
+    participant CharacterRepository as DB Repository (PostgreSQL)
+    participant ExternalAPIService as Dragon Ball API Client
+    participant PostgreSQL as Database
+
+    Client->>GinServer: POST /characters { "name": "Goku" }
+    GinServer->>CharacterHandler: Route Request
+    CharacterHandler->>CharacterService: CreateCharacter("Goku")
+
+    CharacterService->>CharacterRepository: FindByName("Goku")
+    alt Character Found in DB
+        CharacterRepository->>PostgreSQL: SELECT character WHERE name='Goku'
+        PostgreSQL-->>CharacterRepository: Character Data
+        CharacterRepository-->>CharacterService: Character Data
+        CharacterService-->>CharacterHandler: Cached Character Data
+        CharacterHandler-->>GinServer: 200 OK, Character JSON
+        GinServer-->>Client: 200 OK, Character JSON
+    else Character Not Found in DB
+        CharacterRepository-->>CharacterService: nil, nil
+        CharacterService->>ExternalAPIService: FindCharacterByName("Goku")
+        ExternalAPIService->>Dragon Ball API Client: HTTP GET /api/characters (then filter)
+        Dragon Ball API Client-->>ExternalAPIService: All Characters List
+        ExternalAPIService-->>CharacterService: Character Data (if found)
+        alt Character Found in External API
+            CharacterService->>CharacterRepository: Save(Character Data)
+            CharacterRepository->>PostgreSQL: INSERT/UPDATE character
+            PostgreSQL-->>CharacterRepository: Success
+            CharacterRepository-->>CharacterService: Success
+            CharacterService-->>CharacterHandler: New Character Data
+            CharacterHandler-->>GinServer: 200 OK, Character JSON
+            GinServer-->>Client: 200 OK, Character JSON
+        else Character Not Found in External API
+            ExternalAPIService-->>CharacterService: nil, error
+            CharacterService-->>CharacterHandler: nil, error "character not found"
+            CharacterHandler-->>GinServer: 404 Not Found
+            GinServer-->>Client: 404 Not Found, Error JSON
+        end
+    end

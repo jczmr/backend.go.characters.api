@@ -1,0 +1,106 @@
+# openapi.yml
+openapi: 3.0.0
+info:
+  title: Dragon Ball Character Service API
+  version: 1.0.0
+  description: A Go service to create and manage Dragon Ball character information, leveraging an external API and PostgreSQL persistence.
+
+servers:
+  - url: http://localhost:8080
+    description: Local Development Server
+
+tags:
+  - name: Characters
+    description: Operations related to Dragon Ball characters
+
+paths:
+  /characters:
+    post:
+      summary: Create or Retrieve a Dragon Ball Character
+      operationId: createCharacter
+      tags:
+        - Characters
+      description: |
+        Searches for a character by name.
+        - If found in the local database, it returns the cached information.
+        - If not in the database, it fetches the character from the external Dragon Ball API.
+          (Note: The external API does not support direct name search, so it fetches all characters and filters locally.)
+        - If found via the external API, it saves the character's ID, name, and selected details (race, ki) to the database for future retrieval.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: The name of the Dragon Ball character to create or retrieve.
+                  example: Goku
+      responses:
+        '200':
+          description: Character successfully created or retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Character'
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Key: 'CreateCharacterRequest.Name' Error:Field validation for 'Name' failed on the 'required' tag"
+        '404':
+          description: Character not found in the external API.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Character not found in external API"
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to create character"
+
+components:
+  schemas:
+    Character:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the character from the external API.
+          example: "1"
+        name:
+          type: string
+          description: The name of the character.
+          example: "Goku"
+        ki:
+          type: string
+          description: The power of the character.
+          example: "24 Billion"
+        race:
+          type: string
+          description: The race of the character (e.g., Saiyan, Namekian).
+          example: "Saiyan"
+
+      required:
+        - id
+        - name
+        - ki
+        - race
